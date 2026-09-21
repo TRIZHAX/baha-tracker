@@ -1,0 +1,13 @@
+{
+  "name": "Baha Tracker",
+  "short_name": "Baha",
+  "description": "Real-time flood depth and vehicle passability",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "hsl(42 45% 97%)",
+  "theme_color": "hsl(190 84% 36%)",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
