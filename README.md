@@ -122,6 +122,4 @@ Code policy
 -----------
 
 Source and configuration files intentionally contain no explanatory comments. Names and small functions carry implementation meaning. Required compiler reference directives are the only directive-style exception. Architecture, security decisions, platform behavior, and operations are documented in this file.
-#   b a h a - t r a c k e r 
- 
- 
+#
