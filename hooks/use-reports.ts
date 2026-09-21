@@ -16,7 +16,7 @@ export function useReports() {
     try {
       const response = await fetch("/api/reports", { cache: "no-store" })
       if (!response.ok) throw new Error("Reports unavailable")
-      const payload = await response.json() as { reports: FloodReport[]; demo?: boolean }
+      const payload = await response.json() as { reports: FloodReport[] }
       if (mounted.current) {
         setReports(payload.reports.filter(notExpired))
         setLastUpdated(new Date())

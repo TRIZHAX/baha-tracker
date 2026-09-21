@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
   if (!service) return safeJsonError("Photo storage is not configured", 503)
   const authClient = await createServerSupabase()
   const { data: authData } = authClient ? await authClient.auth.getUser() : { data: { user: null } }
-  const owner = authData.user?.id || "guest"
+  if (!authData.user) return safeJsonError("You must be signed in to upload a photo", 401)
+  const owner = authData.user.id
   const extension = photo.type === "image/png" ? "png" : photo.type === "image/jpeg" ? "jpg" : "webp"
   const path = `${owner}/${crypto.randomUUID()}.${extension}`
   const { error } = await service.storage.from("flood-photos").upload(path, photo, { contentType: photo.type, upsert: false })

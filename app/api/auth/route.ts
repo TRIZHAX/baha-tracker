@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return safeJsonError(parsed.error.issues[0]?.message || "Invalid account details", 400)
   const { action, email, password, remember } = parsed.data
   const supabase = await createServerSupabase(remember)
-  if (!supabase) return safeJsonError("Account services are not configured. Continue as guest for the local demo.", 503)
+  if (!supabase) return safeJsonError("Account services are temporarily unavailable. Please try again later.", 503)
   if (action === "reset") {
     const redirectTo = new URL("/auth/callback?next=/profile", request.url).toString()
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })

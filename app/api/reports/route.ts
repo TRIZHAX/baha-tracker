@@ -50,9 +50,12 @@ const mapReportRow = (row: ReportRow): FloodReport => ({
 
 export async function GET() {
   const supabase = createServiceSupabase()
-  if (!supabase) return Response.json({ reports: [], demo: true })
+  if (!supabase) return safeJsonError("Live reports are not configured on this deployment", 503)
   const { data, error } = await supabase.rpc("get_active_reports")
-  if (error) return safeJsonError("Live reports are temporarily unavailable", 503)
+  if (error) {
+    console.error("get_active_reports failed:", error)
+    return safeJsonError("Live reports are temporarily unavailable", 503)
+  }
   return Response.json({ reports: (data as ReportRow[]).map(mapReportRow) }, { headers: { "Cache-Control": "no-store" } })
 }
 
@@ -65,11 +68,12 @@ export async function POST(request: NextRequest) {
   if (report.mode === "segment" && (report.lengthMeters < 5 || report.lengthMeters > 2000)) return safeJsonError("Flooded stretches must be between 5 meters and 2 kilometers", 400)
   const authClient = await createServerSupabase()
   const { data: authData } = authClient ? await authClient.auth.getUser() : { data: { user: null } }
-  const identity = getRequestIdentity(request, authData.user?.id)
+  if (!authData.user) return safeJsonError("You must be signed in to submit a flood report", 401)
+  const identity = getRequestIdentity(request, authData.user.id)
   const limit = await checkRateLimit("report", identity)
   if (!limit.success) return safeJsonError("Report limit reached. Please wait before sending another.", 429)
   const service = createServiceSupabase()
-  if (!service) return Response.json({ report: { id: crypto.randomUUID(), ...report }, demo: true }, { status: 201 })
+  if (!service) return safeJsonError("Report service is not configured on this deployment", 503)
   const line = `SRID=4326;LINESTRING(${report.coordinates.map(([longitude, latitude]) => `${longitude} ${latitude}`).join(",")})`
   const startPoint = `SRID=4326;POINT(${report.startPoint[0]} ${report.startPoint[1]})`
   const endPoint = `SRID=4326;POINT(${report.endPoint[0]} ${report.endPoint[1]})`

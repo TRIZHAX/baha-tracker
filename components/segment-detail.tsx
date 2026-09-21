@@ -18,12 +18,6 @@ export function SegmentDetail({ report, vehicle, onClose }: { report: FloodRepor
   const vehicleLabel = vehicleOptions.find((option) => option.value === vehicle)?.label
 
   const vote = async (value: 1 | -1) => {
-    if (report.id.startsWith("demo-")) {
-      if (value === 1) setUpvotes((count) => count + 1)
-      else setDownvotes((count) => count + 1)
-      setMessage("Demo vote recorded on this device")
-      return
-    }
     const response = await fetch("/api/votes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reportId: report.id, vote: value }) })
     const payload = await response.json() as { error?: string }
     if (!response.ok) {
