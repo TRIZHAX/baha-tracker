@@ -40,12 +40,12 @@ export const sosSchema = z.object({
 })
 
 export const authSchema = z.object({
-  action: z.enum(["login", "signup", "reset"]),
+  action: z.enum(["login", "signup", "reset", "resend"]),
   email: z.string().email().max(254),
   password: z.string().min(8).max(128).optional(),
   remember: z.boolean().optional()
 }).superRefine((value, context) => {
-  if (value.action !== "reset" && !value.password) {
+  if (!["reset", "resend"].includes(value.action) && !value.password) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: "Password is required", path: ["password"] })
   }
 })

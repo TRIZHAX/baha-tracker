@@ -3,39 +3,25 @@ import { NextResponse, type NextRequest } from "next/server"
 
 type CookieToSet = { name: string; value: string; options: CookieOptions }
 
-const protectedPaths = ["/map", "/report", "/sos", "/profile"]
-
-const isProtectedPath = (pathname: string) => protectedPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))
-
 export async function proxy(request: NextRequest) {
-  if (!isProtectedPath(request.nextUrl.pathname)) return NextResponse.next()
-
+  let response = NextResponse.next({ request })
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !key) return NextResponse.redirect(new URL("/login?error=configuration", request.url))
-
-  let response = NextResponse.next({ request })
+  if (!url || !key) return response
   const supabase = createServerClient(url, key, {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (cookiesToSet: CookieToSet[]) => {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
         response = NextResponse.next({ request })
-        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
-      },
-    },
+        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, { ...options, httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" }))
+      }
+    }
   })
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`)
-    return NextResponse.redirect(loginUrl)
-  }
-
+  await supabase.auth.getUser()
   return response
 }
 
 export const config = {
-  matcher: ["/map/:path*", "/report/:path*", "/sos/:path*", "/profile/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"]
 }

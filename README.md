@@ -51,7 +51,7 @@ Environment variables
 
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` is the Supabase anonymous key and may be exposed to the browser because Row-Level Security remains authoritative.
 
-`SUPABASE_SERVICE_ROLE_KEY` stays server-only and is used only by scheduled server tasks such as report expiry. Normal user report, SOS, vote, and photo operations use the authenticated Supabase session and Row-Level Security.
+`SUPABASE_SERVICE_ROLE_KEY` stays server-only. It enables validated guest reports, SOS submissions, the public report projection, and scheduled expiry.
 
 `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` stay server-only and enable serverless-safe limits of five reports or three SOS requests per ten-minute window.
 
@@ -64,7 +64,7 @@ Supabase configuration
 
 Enable email and password authentication in Supabase Auth. Add local and deployed callback addresses ending in `/auth/callback` to the allowed redirect list. The migration enables PostGIS, creates all application tables and constraints, applies a GIST index to both spatial columns, enables Row-Level Security on every table, creates role-aware policies, adds vote aggregation and SOS audit triggers, creates the flood photo bucket, and publishes report updates through Supabase Realtime.
 
-The application starts at the sign-in page. Map, report, SOS, and profile pages require a valid Supabase Auth session. Active reports are read through the authenticated server session and governed by Row-Level Security. The service role key is never sent to the client.
+Anonymous visitors read active reports through the app API. Guest writes run only after server validation, geographic checks, and rate limiting. Authenticated browser operations remain governed by Row-Level Security. The service role key is never sent to the client.
 
 Deploy to Vercel with GitHub
 ----------------------------
