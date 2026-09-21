@@ -20,15 +20,20 @@ export const createServerSupabase = async (remember = true) => {
         return cookieStore.getAll()
       },
       setAll(cookiesToSet: CookieToSet[]) {
-        cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, { ...options, maxAge: remember ? options.maxAge : undefined, secure: process.env.NODE_ENV === "production", sameSite: "lax" }))
-      }
-    }
+        cookiesToSet.forEach(({ name, value, options }) => {
+          cookieStore.set(name, value, {
+            ...options,
+            maxAge: remember ? options.maxAge : undefined,
+          })
+        })
+      },
+    },
   })
 }
 
 export const createServiceSupabase = () => {
   if (!hasServiceRoleConfig) return null
   return createClient(publicUrl as string, serviceRoleKey as string, {
-    auth: { persistSession: false, autoRefreshToken: false }
+    auth: { persistSession: false, autoRefreshToken: false },
   })
 }

@@ -1,15 +1,16 @@
 "use client"
 
-import { ArrowRight, Check, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Waves } from "lucide-react"
+import { ArrowRight, Check, Eye, EyeOff, LockKeyhole, Mail, MapPin, ShieldCheck, Waves } from "lucide-react"
 import { FormEvent, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Logo } from "@/components/logo"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 
 export function LoginScreen() {
   const router = useRouter()
-  const searchParams = useSearchParams()
+  const nextPath = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("next") : null
+  const destination = nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/map"
   const [mode, setMode] = useState<"login" | "signup">("login")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -33,8 +34,7 @@ export function LoginScreen() {
       setStatus(payload.message || "Check your email to confirm your account")
       return
     }
-    const next = searchParams.get("next")
-    router.push(next && next.startsWith("/") ? next : "/map")
+    router.push(destination)
     router.refresh()
   }
 
@@ -47,7 +47,6 @@ export function LoginScreen() {
     const payload = await response.json() as { error?: string; message?: string }
     setStatus(payload.message || payload.error || "Check your email")
   }
-
 
   return (
     <main className="grid min-h-dvh bg-[hsl(var(--background))] lg:grid-cols-[1.1fr_0.9fr]">
@@ -71,7 +70,6 @@ export function LoginScreen() {
             {status && <p role="status" className="rounded-xl bg-[hsl(var(--muted))] p-3 text-sm font-semibold">{status}</p>}
             <Button type="submit" className="w-full" disabled={submitting}>{submitting ? "Please wait" : mode === "login" ? "Sign in securely" : "Create account"}<ArrowRight className="h-5 w-5" /></Button>
           </form>
-          <div className="my-6 flex items-center gap-3 text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]"><span className="h-px flex-1 bg-[hsl(var(--border))]" />secure access<span className="h-px flex-1 bg-[hsl(var(--border))]" /></div>
           <p className="mt-5 text-center text-sm text-[hsl(var(--muted-foreground))]">{mode === "login" ? "New to Baha Tracker?" : "Already have an account?"} <button onClick={() => { setMode(mode === "login" ? "signup" : "login"); setStatus("") }} className="min-h-11 font-bold text-cyan-700 dark:text-cyan-300">{mode === "login" ? "Create account" : "Sign in"}</button></p>
         </div>
       </section>

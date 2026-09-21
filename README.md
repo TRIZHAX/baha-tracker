@@ -42,7 +42,7 @@ Local setup
 6. Start the app with `npm run dev`.
 7. Open the local address printed by Next.js.
 
-Production access is authentication-first. Protected app routes redirect to `/login` when no valid Supabase session is present. Cloud writes, account actions, photo storage, Realtime, and distributed rate limiting require their corresponding services.
+The interface remains usable without environment values and begins with an empty flood map. Cloud writes, account actions, photo storage, Realtime, and distributed rate limiting require their corresponding services.
 
 Environment variables
 ---------------------
@@ -51,7 +51,7 @@ Environment variables
 
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` is the Supabase anonymous key and may be exposed to the browser because Row-Level Security remains authoritative.
 
-`SUPABASE_SERVICE_ROLE_KEY` stays server-only. It enables the server-side report projection and scheduled expiry after the request has passed authentication and validation.
+`SUPABASE_SERVICE_ROLE_KEY` stays server-only and is used only by scheduled server tasks such as report expiry. Normal user report, SOS, vote, and photo operations use the authenticated Supabase session and Row-Level Security.
 
 `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` stay server-only and enable serverless-safe limits of five reports or three SOS requests per ten-minute window.
 
@@ -64,7 +64,7 @@ Supabase configuration
 
 Enable email and password authentication in Supabase Auth. Add local and deployed callback addresses ending in `/auth/callback` to the allowed redirect list. The migration enables PostGIS, creates all application tables and constraints, applies a GIST index to both spatial columns, enables Row-Level Security on every table, creates role-aware policies, adds vote aggregation and SOS audit triggers, creates the flood photo bucket, and publishes report updates through Supabase Realtime.
 
-All application routes and application APIs are intended for authenticated Baha Tracker users, except the login/auth callback and the CRON endpoint protected by `CRON_SECRET`. Authenticated browser operations remain governed by Row-Level Security. The service role key is never sent to the client.
+The application starts at the sign-in page. Map, report, SOS, and profile pages require a valid Supabase Auth session. Active reports are read through the authenticated server session and governed by Row-Level Security. The service role key is never sent to the client.
 
 Deploy to Vercel with GitHub
 ----------------------------
@@ -88,7 +88,7 @@ Run `vercel` to link the project and configure values, then run `vercel --prod`.
 Security model
 --------------
 
-Vercel provides HTTPS. The deployment configuration adds HSTS, a restrictive Content Security Policy, clickjacking protection, MIME sniffing protection, a strict referrer policy, and a permissions policy that allows geolocation only from the same origin. Supabase Auth manages password hashing and session refresh through secure, SameSite cookies; the browser must be able to manage the auth cookies for client-side Supabase Realtime/session behavior. Inputs are validated before every write. Report coordinates must remain within the Philippines bounds. A submitted PostGIS line always contains exactly two endpoints. Road-aligned OSRM coordinates are a visual preview; the authoritative geometry preserves the validated start and end boundary. Segment lengths outside five meters to two kilometers are rejected. Single-point mode stores a zero-length two-endpoint line and is explicitly marked as a pin report.
+Vercel provides HTTPS. The deployment configuration adds HSTS, a restrictive Content Security Policy, clickjacking protection, MIME sniffing protection, a strict referrer policy, and a permissions policy that allows geolocation only from the same origin. Supabase Auth hashes passwords and session refresh occurs through secure, HttpOnly, SameSite cookies. Inputs are validated before every write. Report coordinates must remain within the Philippines bounds. A submitted PostGIS line always contains exactly two endpoints. Road-aligned OSRM coordinates are a visual preview; the authoritative geometry preserves the validated start and end boundary. Segment lengths outside five meters to two kilometers are rejected. Single-point mode stores a zero-length two-endpoint line and is explicitly marked as a pin report.
 
 Public map responses round coordinates to five decimal places. This keeps useful street-level placement while reducing unnecessary precision. Precise SOS locations are visible only to the alert owner and responder or administrator roles. SOS status changes and moderation-capable actions are represented in the audit log.
 
