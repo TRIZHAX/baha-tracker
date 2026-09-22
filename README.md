@@ -39,8 +39,9 @@ Local setup
 3. Copy `.env.example` to `.env.local`.
 4. Add the Supabase and Upstash values.
 5. Run the SQL files in `supabase/migrations` in numeric order using the Supabase SQL editor.
-6. Start the app with `npm run dev`.
-7. Open the local address printed by Next.js.
+6. Run `npm run typecheck` and `npm run build` before deployment.
+7. Start the app with `npm run dev`.
+8. Open the local address printed by Next.js.
 
 The interface remains usable without environment values and begins with an empty flood map. Cloud writes, account actions, photo storage, Realtime, and distributed rate limiting require their corresponding services.
 
@@ -58,6 +59,23 @@ Environment variables
 `NEXT_PUBLIC_OSRM_URL` selects the routing service. It defaults to the public OSRM demo server. A dedicated compatible endpoint is recommended for sustained production traffic.
 
 `CRON_SECRET` protects the manual report-expiry endpoint. Vercel automatically sends it as a bearer token when configured for cron jobs.
+
+Admin Dashboard
+---------------
+
+The protected `/admin` route is available only when the authenticated Supabase user has `public.users.role = 'admin'`. Server-side authorization is centralized in `lib/admin.ts`; browser requests never receive the service-role key.
+
+The admin dashboard provides report moderation, SOS status management, and an administrator-only SOS location map. The SOS map reads coordinates through the `get_admin_sos_alerts(uuid)` Supabase function created by migration `003_admin_dashboard.sql`. The function independently verifies the supplied authenticated user id has the `admin` role before returning coordinates.
+
+To promote an existing account, run a controlled SQL update in Supabase using that account's Auth user id:
+
+```sql
+update public.users
+set role = 'admin', updated_at = now()
+where id = '<AUTH_USER_UUID>';
+```
+
+No new environment variables are required for the admin feature. `SUPABASE_SERVICE_ROLE_KEY` remains server-only.
 
 Supabase configuration
 ----------------------
@@ -123,27 +141,3 @@ Code policy
 
 Source and configuration files intentionally contain no explanatory comments. Names and small functions carry implementation meaning. Required compiler reference directives are the only directive-style exception. Architecture, security decisions, platform behavior, and operations are documented in this file.
 #
-
-## Admin Dashboard
-
-The project now includes an admin-only dashboard at `/admin`.
-
-Features:
-- View all flood reports, including expired/hidden records.
-- Add a verified flood report manually.
-- Permanently delete flood reports.
-- View all SOS alerts.
-- Update SOS status to acknowledged, en route, or resolved.
-- Record admin actions in `audit_log`.
-
-### Creating the first admin
-
-New registrations remain `user` accounts. To promote a trusted account, update its row in Supabase SQL Editor:
-
-```sql
-update public.users
-set role = 'admin'
-where email = 'YOUR-ADMIN-EMAIL@example.com';
-```
-
-Do not expose `SUPABASE_SERVICE_ROLE_KEY` to the browser. It must remain a server/Vercel environment variable.

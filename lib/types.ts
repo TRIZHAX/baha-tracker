@@ -37,3 +37,37 @@ export type MapFocus = {
   latitude: number
   zoom: number
 }
+
+
+export type AdminReport = {
+  id: string
+  user_id: string | null
+  reporter_email: string | null
+  length_meters: number
+  depth_level: DepthLevel
+  photo_url: string | null
+  note: string | null
+  street_name: string
+  barangay: string
+  report_mode: "segment" | "pin"
+  created_at: string
+  updated_at: string
+  expires_at: string
+  verification_status: VerificationStatus
+  upvotes: number
+  downvotes: number
+}
+
+export type SosAdminAlert = {
+  id: string
+  user_id: string | null
+  reporter_email: string | null
+  latitude: number
+  longitude: number
+  accuracy_meters: number
+  emergency_types: SosType[]
+  status: SosStatus
+  created_at: string
+  acknowledged_at: string | null
+  updated_at: string
+}

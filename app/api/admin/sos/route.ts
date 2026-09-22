@@ -1,157 +1,57 @@
-import { NextRequest } from "next/server"
-import {
-  createServerSupabase,
-  createServiceSupabase,
-} from "@/lib/supabase/server"
+import { NextRequest, NextResponse } from "next/server"
+import { getAdmin } from "@/lib/admin"
+import { safeJsonError } from "@/lib/request"
+import type { SosStatus } from "@/lib/types"
 
 export const dynamic = "force-dynamic"
 
-async function getAdmin() {
-  const auth = await createServerSupabase()
+const sosStatuses: SosStatus[] = ["sent", "acknowledged", "en_route", "resolved"]
 
-  const { data } = auth
-    ? await auth.auth.getUser()
-    : { data: { user: null } }
-
-  if (!data.user) {
-    return {
-      user: null,
-      service: null,
-      error: Response.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      ),
-    }
-  }
-
-  const service = createServiceSupabase()
-
-  if (!service) {
-    return {
-      user: data.user,
-      service: null,
-      error: Response.json(
-        { error: "Supabase service configuration is missing" },
-        { status: 503 }
-      ),
-    }
-  }
-
-  const { data: profile } = await service
-    .from("users")
-    .select("role")
-    .eq("id", data.user.id)
-    .single()
-
-  if (profile?.role !== "admin") {
-    return {
-      user: data.user,
-      service,
-      error: Response.json(
-        { error: "Admin access required" },
-        { status: 403 }
-      ),
-    }
-  }
-
-  return {
-    user: data.user,
-    service,
-    error: null,
-  }
+type SosRow = {
+  id: string
+  user_id: string | null
+  reporter_email: string | null
+  latitude: number
+  longitude: number
+  accuracy_meters: number
+  emergency_types: string[]
+  status: SosStatus
+  created_at: string
+  acknowledged_at: string | null
+  updated_at: string
 }
 
 export async function GET() {
-  const { user, service, error } = await getAdmin()
+  const admin = await getAdmin()
+  if ("error" in admin) return admin.error
 
-  if (error) return error
+  const { service, user } = admin
+  const { data, error } = await service.rpc("get_admin_sos_alerts", { p_actor_id: user.id })
+  if (error) return safeJsonError("SOS alerts could not be loaded", 500)
 
-  const { data, error: queryError } = await service!.rpc(
-    "admin_sos_locations",
-    {
-      p_admin_user_id: user!.id,
-    }
-  )
-
-  if (queryError) {
-    console.error("admin_sos_locations error:", queryError)
-
-    return Response.json(
-      { error: "SOS alerts could not be loaded" },
-      { status: 500 }
-    )
-  }
-
-  return Response.json(
-    {
-      alerts: data || [],
-    },
-    {
-      headers: {
-        "Cache-Control": "no-store",
-      },
-    }
-  )
+  return NextResponse.json({ sos: (data as SosRow[] | null) ?? [] }, { headers: { "Cache-Control": "no-store" } })
 }
 
 export async function PATCH(request: NextRequest) {
-  const { user, service, error } = await getAdmin()
+  const admin = await getAdmin()
+  if ("error" in admin) return admin.error
 
-  if (error) return error
-
-  const body = await request.json().catch(() => null)
-
-  const id = String(body?.id || "")
-  const status = String(body?.status || "")
-
-  const allowed = [
-    "sent",
-    "acknowledged",
-    "en_route",
-    "resolved",
-  ]
-
-  if (!id || !allowed.includes(status)) {
-    return Response.json(
-      { error: "Invalid SOS status" },
-      { status: 400 }
-    )
+  const body = await request.json().catch(() => null) as { id?: unknown; status?: unknown } | null
+  if (typeof body?.id !== "string" || !sosStatuses.includes(body.status as SosStatus)) {
+    return safeJsonError("Invalid SOS status update", 400)
   }
 
-  const update: Record<string, string> = {
-    status,
-    updated_at: new Date().toISOString(),
-  }
-
-  if (status === "acknowledged") {
-    update.acknowledged_at = new Date().toISOString()
-  }
-
-  const { error: updateError } = await service!
+  const status = body.status as SosStatus
+  const { service } = admin
+  const { data, error } = await service
     .from("sos_alerts")
-    .update(update)
-    .eq("id", id)
+    .update({ status, ...(status === "acknowledged" ? { acknowledged_at: new Date().toISOString() } : {}) })
+    .eq("id", body.id)
+    .select("id,status,acknowledged_at,updated_at")
+    .maybeSingle()
 
-  if (updateError) {
-    console.error("SOS update error:", updateError)
+  if (error) return safeJsonError("SOS status could not be updated", 500)
+  if (!data) return safeJsonError("SOS alert not found", 404)
 
-    return Response.json(
-      { error: "SOS status could not be updated" },
-      { status: 500 }
-    )
-  }
-
-  await service!.from("audit_log").insert({
-    actor_id: user!.id,
-    action: "admin_sos_status_updated",
-    target_table: "sos_alerts",
-    target_id: id,
-    metadata: {
-      status,
-    },
-  })
-
-  return Response.json({
-    ok: true,
-  })
+  return NextResponse.json({ sos: data })
 }
