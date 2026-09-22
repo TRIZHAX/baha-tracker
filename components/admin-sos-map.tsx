@@ -11,7 +11,7 @@ const mapStyle = {
   sources: {
     osm: {
       type: "raster" as const,
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tiles: ["/api/map/tiles/{z}/{x}/{y}.png"],
       tileSize: 256,
       attribution: "OpenStreetMap contributors"
     }

@@ -84,6 +84,13 @@ Enable email and password authentication in Supabase Auth. Add local and deploye
 
 Anonymous visitors read active reports through the app API. Guest writes run only after server validation, geographic checks, and rate limiting. Authenticated browser operations remain governed by Row-Level Security. The service role key is never sent to the client.
 
+Map tile proxy
+---------------
+
+The MapLibre maps use the same-origin `/api/map/tiles/{z}/{x}/{y}.png` endpoint. The browser no longer requests OpenStreetMap tile hosts directly, so the map is not dependent on an external OpenStreetMap origin being present in the browser Content Security Policy. The server-side route identifies the application with a User-Agent and Referer and returns cacheable tile responses for seven days.
+
+After deployment, test the proxy directly by opening `/api/map/tiles/0/0/0.png`. A successful response is an image tile rather than a CSP error.
+
 Deploy to Vercel with GitHub
 ----------------------------
 
