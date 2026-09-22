@@ -123,3 +123,27 @@ Code policy
 
 Source and configuration files intentionally contain no explanatory comments. Names and small functions carry implementation meaning. Required compiler reference directives are the only directive-style exception. Architecture, security decisions, platform behavior, and operations are documented in this file.
 #
+
+## Admin Dashboard
+
+The project now includes an admin-only dashboard at `/admin`.
+
+Features:
+- View all flood reports, including expired/hidden records.
+- Add a verified flood report manually.
+- Permanently delete flood reports.
+- View all SOS alerts.
+- Update SOS status to acknowledged, en route, or resolved.
+- Record admin actions in `audit_log`.
+
+### Creating the first admin
+
+New registrations remain `user` accounts. To promote a trusted account, update its row in Supabase SQL Editor:
+
+```sql
+update public.users
+set role = 'admin'
+where email = 'YOUR-ADMIN-EMAIL@example.com';
+```
+
+Do not expose `SUPABASE_SERVICE_ROLE_KEY` to the browser. It must remain a server/Vercel environment variable.
