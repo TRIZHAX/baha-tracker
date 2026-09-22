@@ -17,7 +17,7 @@ async function getAdmin() {
 export async function GET() {
   const { service, error } = await getAdmin()
   if (error) return error
-  const { data, error: queryError } = await service!.from("sos_alerts").select("id,user_id,location,accuracy_meters,emergency_types,status,created_at,acknowledged_at,updated_at").order("created_at", { ascending: false })
+  const { data, error: queryError } = await service!.rpc("admin_sos_locations", { p_admin_user_id: user!.id })
   if (queryError) return Response.json({ error: "SOS alerts could not be loaded" }, { status: 500 })
   return Response.json({ alerts: data || [] }, { headers: { "Cache-Control": "no-store" } })
 }
