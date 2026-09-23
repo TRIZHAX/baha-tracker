@@ -170,3 +170,4 @@ supabase/migrations/004_reporter_identity_and_admin_reports.sql
 - Default vehicle and notification/data-saver preferences are also saved to the existing `public.users` columns.
 - Save failures are shown in the Profile screen instead of being silently ignored.
 - No new Supabase migration is required because `home_barangay`, `default_vehicle`, and `notification_preferences` already exist in `001_initial.sql`.
+- Profile settings now save/load through the authenticated server API, and Supabase auth cookie handling no longer forces HttpOnly on browser-managed session cookies.

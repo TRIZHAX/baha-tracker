@@ -9,7 +9,6 @@ import { AppFrame } from "@/components/app-frame"
 import { Button } from "@/components/ui/button"
 import { vehicleOptions } from "@/lib/constants"
 import { VehicleType } from "@/lib/types"
-import { createBrowserSupabase } from "@/lib/supabase/browser"
 
 const isVehicleType = (value: unknown): value is VehicleType =>
   typeof value === "string" && vehicleOptions.some((option) => option.value === value)
@@ -36,56 +35,42 @@ export function ProfileScreen() {
     setDataSaver(localDataSaver === "true")
 
     const loadProfile = async () => {
-      const supabase = createBrowserSupabase()
-      if (!supabase) {
-        setLoading(false)
-        return
-      }
+      try {
+        const response = await fetch("/api/profile/settings", { cache: "no-store" })
+        const payload = await response.json().catch(() => null) as {
+          profile?: {
+            fullName?: string
+            homeBarangay?: string
+            defaultVehicle?: string
+            notifications?: boolean
+            dataSaver?: boolean
+          }
+          error?: string
+        } | null
 
-      const { data: auth, error: authError } = await supabase.auth.getUser()
-      if (authError || !auth.user) {
-        setLoading(false)
-        return
-      }
+        if (!response.ok || !payload?.profile) {
+          setError(payload?.error || "Could not load your saved settings.")
+          setLoading(false)
+          return
+        }
 
-      const { data, error: profileError } = await supabase
-        .from("users")
-        .select("full_name, home_barangay, default_vehicle, notification_preferences")
-        .eq("id", auth.user.id)
-        .maybeSingle()
-
-      if (profileError) {
-        setError("Could not load your saved settings from the database. Home barangay will remain blank until the profile can be loaded.")
-        setLoading(false)
-        return
-      }
-
-      setFullName(data?.full_name || auth.user.user_metadata?.full_name || "")
-
-      // Supabase is the source of truth for Home barangay.
-      // There is no hard-coded barangay fallback.
-      if (typeof data?.home_barangay === "string") {
-        setBarangay(data.home_barangay)
-        if (data.home_barangay.trim()) window.localStorage.setItem("baha-barangay", data.home_barangay)
+        const profile = payload.profile
+        setFullName(profile.fullName || "")
+        setBarangay(profile.homeBarangay || "")
+        if (profile.homeBarangay?.trim()) window.localStorage.setItem("baha-barangay", profile.homeBarangay)
         else window.localStorage.removeItem("baha-barangay")
-      } else {
-        setBarangay("")
-        window.localStorage.removeItem("baha-barangay")
-      }
 
-      if (isVehicleType(data?.default_vehicle)) {
-        setVehicle(data.default_vehicle)
-        window.localStorage.setItem("baha-vehicle", data.default_vehicle)
+        if (isVehicleType(profile.defaultVehicle)) {
+          setVehicle(profile.defaultVehicle)
+          window.localStorage.setItem("baha-vehicle", profile.defaultVehicle)
+        }
+        if (typeof profile.notifications === "boolean") setNotifications(profile.notifications)
+        if (typeof profile.dataSaver === "boolean") setDataSaver(profile.dataSaver)
+      } catch {
+        setError("Could not connect to the account settings service. Please try again.")
+      } finally {
+        setLoading(false)
       }
-
-      const preferences = data?.notification_preferences
-      if (preferences && typeof preferences === "object" && !Array.isArray(preferences)) {
-        const preferenceRecord = preferences as Record<string, unknown>
-        if (typeof preferenceRecord.floodAlerts === "boolean") setNotifications(preferenceRecord.floodAlerts)
-        if (typeof preferenceRecord.dataSaver === "boolean") setDataSaver(preferenceRecord.dataSaver)
-      }
-
-      setLoading(false)
     }
 
     void loadProfile()
@@ -95,65 +80,50 @@ export function ProfileScreen() {
     setError("")
     setSaved(false)
 
-    const supabase = createBrowserSupabase()
-    if (!supabase) {
-      setError("Supabase is not configured, so the settings could not be saved.")
-      return
-    }
-
-    const { data: auth, error: authError } = await supabase.auth.getUser()
-    if (authError || !auth.user) {
-      setError("Your session has expired. Please log in again before saving settings.")
-      return
-    }
-
-    const trimmedFullName = fullName.trim()
-    const trimmedBarangay = barangay.trim()
-
-    const { data: savedProfile, error: profileError } = await supabase
-      .from("users")
-      .update({
-        full_name: trimmedFullName || null,
-        home_barangay: trimmedBarangay || null,
-        default_vehicle: vehicle,
-        notification_preferences: {
-          floodAlerts: notifications,
+    try {
+      const response = await fetch("/api/profile/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          fullName,
+          homeBarangay: barangay,
+          defaultVehicle: vehicle,
+          notifications,
           dataSaver,
-        },
+        }),
       })
-      .eq("id", auth.user.id)
-      .select("id")
-      .maybeSingle()
 
-    if (profileError) {
-      setError(`Settings were not saved: ${profileError.message}`)
-      return
+      const payload = await response.json().catch(() => null) as {
+        profile?: { fullName?: string; homeBarangay?: string; defaultVehicle?: string; notifications?: boolean; dataSaver?: boolean }
+        error?: string
+      } | null
+
+      if (!response.ok || !payload?.profile) {
+        setError(payload?.error || "Settings could not be saved.")
+        return
+      }
+
+      const profile = payload.profile
+      const savedFullName = profile.fullName || ""
+      const savedBarangay = profile.homeBarangay || ""
+      setFullName(savedFullName)
+      setBarangay(savedBarangay)
+      if (isVehicleType(profile.defaultVehicle)) setVehicle(profile.defaultVehicle)
+      if (typeof profile.notifications === "boolean") setNotifications(profile.notifications)
+      if (typeof profile.dataSaver === "boolean") setDataSaver(profile.dataSaver)
+
+      if (savedBarangay) window.localStorage.setItem("baha-barangay", savedBarangay)
+      else window.localStorage.removeItem("baha-barangay")
+      window.localStorage.setItem("baha-vehicle", isVehicleType(profile.defaultVehicle) ? profile.defaultVehicle : vehicle)
+      window.localStorage.setItem("baha-notifications", String(profile.notifications ?? notifications))
+      window.localStorage.setItem("baha-data-saver", String(profile.dataSaver ?? dataSaver))
+
+      setSaved(true)
+      window.setTimeout(() => setSaved(false), 1800)
+    } catch {
+      setError("Could not connect to the account settings service. Please try again.")
     }
-
-    if (!savedProfile) {
-      setError("Your account profile was not found in the users table, so the settings were not saved.")
-      return
-    }
-
-    const { error: authUpdateError } = await supabase.auth.updateUser({
-      data: { full_name: trimmedFullName || null },
-    })
-
-    if (authUpdateError) {
-      setError(`Settings were saved to the database, but the account name could not be updated: ${authUpdateError.message}`)
-      return
-    }
-
-    // Keep local storage synchronized, but never use a hard-coded barangay.
-    if (trimmedBarangay) window.localStorage.setItem("baha-barangay", trimmedBarangay)
-    else window.localStorage.removeItem("baha-barangay")
-    window.localStorage.setItem("baha-vehicle", vehicle)
-    window.localStorage.setItem("baha-notifications", String(notifications))
-    window.localStorage.setItem("baha-data-saver", String(dataSaver))
-
-    setBarangay(trimmedBarangay)
-    setSaved(true)
-    window.setTimeout(() => setSaved(false), 1800)
   }
 
   const logout = async () => {

@@ -20,7 +20,7 @@ export const createServerSupabase = async (remember = true) => {
         return cookieStore.getAll()
       },
       setAll(cookiesToSet: CookieToSet[]) {
-        cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, { ...options, maxAge: remember ? options.maxAge : undefined, httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" }))
+        cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, { ...options, maxAge: remember ? options.maxAge : undefined }))
       }
     }
   })
