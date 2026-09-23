@@ -161,3 +161,12 @@ Apply the new Supabase migration before using reporter-name/location fields:
 ```text
 supabase/migrations/004_reporter_identity_and_admin_reports.sql
 ```
+
+## Latest profile settings update
+
+- **Home barangay** is now loaded directly from `public.users.home_barangay` for the signed-in account.
+- Removed the application-level `Sampaloc` fallback from the Profile settings.
+- Saving Profile settings now writes `home_barangay` to Supabase and synchronizes local storage only after a successful database update.
+- Default vehicle and notification/data-saver preferences are also saved to the existing `public.users` columns.
+- Save failures are shown in the Profile screen instead of being silently ignored.
+- No new Supabase migration is required because `home_barangay`, `default_vehicle`, and `notification_preferences` already exist in `001_initial.sql`.
