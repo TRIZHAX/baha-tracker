@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAdmin } from "@/lib/admin"
 import { safeJsonError } from "@/lib/request"
-import type { VerificationStatus } from "@/lib/types"
+import type { AdminReport, VerificationStatus } from "@/lib/types"
 
 export const dynamic = "force-dynamic"
 
@@ -15,8 +15,10 @@ export async function GET() {
   const { data, error } = await service.rpc("get_admin_reports", { p_actor_id: user.id })
   if (error) return safeJsonError("Reports could not be loaded", 500)
 
+  const rows = (data ?? []) as AdminReport[]
+
   return NextResponse.json({
-    reports: (data ?? []).map((row) => ({
+    reports: rows.map((row) => ({
       ...row,
       length_meters: Number(row.length_meters),
       start_latitude: Number(row.start_latitude),
