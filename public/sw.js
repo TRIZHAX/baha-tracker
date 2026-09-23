@@ -1,6 +1,6 @@
-const staticCache = "baha-static-v1"
-const mapCache = "baha-map-v1"
-const staticAssets = ["/", "/map", "/manifest.json", "/icon.svg"]
+const staticCache = "baha-static-v2"
+const mapCache = "baha-map-v2"
+const staticAssets = ["/", "/manifest.json", "/icon.svg"]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(staticCache).then((cache) => cache.addAll(staticAssets)))
@@ -14,19 +14,13 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url)
-  const isMapTile = requestUrl.hostname.endsWith("tile.openstreetmap.org")
-  if (isMapTile) {
-    event.respondWith(caches.open(mapCache).then(async (cache) => {
-      const cached = await cache.match(event.request)
-      const network = fetch(event.request).then((response) => {
-        if (response.ok) cache.put(event.request, response.clone())
-        return response
-      }).catch(() => cached)
-      return cached || network
-    }))
+
+  if (event.request.method === "GET" && event.request.mode === "navigate") {
+    event.respondWith(fetch(event.request))
     return
   }
-  if (event.request.method === "GET" && requestUrl.origin === self.location.origin) {
-    event.respondWith(fetch(event.request).catch(() => caches.match(event.request).then((response) => response || caches.match("/"))))
+
+  if (requestUrl.origin === self.location.origin && event.request.method === "GET") {
+    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)))
   }
 })

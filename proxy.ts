@@ -18,7 +18,18 @@ export async function proxy(request: NextRequest) {
       }
     }
   })
-  await supabase.auth.getUser()
+  const { data: authData } = await supabase.auth.getUser()
+  const protectedPrefixes = ["/map", "/report", "/sos", "/profile", "/admin"]
+  const isProtectedRoute = protectedPrefixes.some((prefix) => request.nextUrl.pathname === prefix || request.nextUrl.pathname.startsWith(`${prefix}/`))
+
+  if (isProtectedRoute && !authData.user) {
+    const loginUrl = new URL("/login", request.url)
+    loginUrl.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`)
+    const redirectResponse = NextResponse.redirect(loginUrl)
+    response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie))
+    return redirectResponse
+  }
+
   return response
 }
 

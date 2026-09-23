@@ -127,7 +127,7 @@ Each signed-in user has one vote per report through a unique database constraint
 Offline behavior
 ----------------
 
-The service worker caches the application shell and recently requested map tiles. Reports created without a connection enter an IndexedDB queue and are retried when the browser returns online. Cached information always shows an offline and last-updated indicator. Tile caching is best effort and is bounded by the browser storage policy.
+The service worker caches only a small application shell. Protected HTML routes such as /map are never served from the service-worker cache. Reports created without a connection enter an IndexedDB queue and are retried when the browser returns online. Map tiles are fetched normally through the same-origin map proxy.
 
 Responsive verification
 -----------------------
@@ -147,4 +147,17 @@ Code policy
 -----------
 
 Source and configuration files intentionally contain no explanatory comments. Names and small functions carry implementation meaning. Required compiler reference directives are the only directive-style exception. Architecture, security decisions, platform behavior, and operations are documented in this file.
-#
+## Latest security and admin update
+
+- Admin reports now show the reporter name (when provided), email, street/barangay, and exact start/end coordinates.
+- Administrators have explicit **Verify** and **Delete** report actions, plus the existing status controls.
+- New account signup collects a full name, and existing users can add/update their name from Profile.
+- `/map`, `/report`, `/sos`, `/profile`, and `/admin` are protected by server-side authentication. Unauthenticated direct visits are redirected to `/login?next=...`.
+- The service worker no longer caches protected HTML routes, preventing stale cached `/map` pages from being reused.
+- Admin report identity/location data is served through the admin-only `get_admin_reports` database function.
+
+Apply the new Supabase migration before using reporter-name/location fields:
+
+```text
+supabase/migrations/004_reporter_identity_and_admin_reports.sql
+```

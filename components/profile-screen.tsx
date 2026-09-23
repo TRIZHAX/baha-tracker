@@ -9,10 +9,12 @@ import { AppFrame } from "@/components/app-frame"
 import { Button } from "@/components/ui/button"
 import { vehicleOptions } from "@/lib/constants"
 import { VehicleType } from "@/lib/types"
+import { createBrowserSupabase } from "@/lib/supabase/browser"
 
 export function ProfileScreen() {
   const router = useRouter()
   const { resolvedTheme, setTheme } = useTheme()
+  const [fullName, setFullName] = useState("")
   const [vehicle, setVehicle] = useState<VehicleType>("tricycle")
   const [barangay, setBarangay] = useState("Sampaloc")
   const [notifications, setNotifications] = useState(true)
@@ -24,9 +26,26 @@ export function ProfileScreen() {
     setBarangay(window.localStorage.getItem("baha-barangay") || "Sampaloc")
     setNotifications(window.localStorage.getItem("baha-notifications") !== "false")
     setDataSaver(window.localStorage.getItem("baha-data-saver") === "true")
+    const loadProfile = async () => {
+      const supabase = createBrowserSupabase()
+      if (!supabase) return
+      const { data: auth } = await supabase.auth.getUser()
+      if (!auth.user) return
+      const { data } = await supabase.from("users").select("full_name").eq("id", auth.user.id).maybeSingle()
+      setFullName(data?.full_name || auth.user.user_metadata?.full_name || "")
+    }
+    void loadProfile()
   }, [])
 
-  const save = () => {
+  const save = async () => {
+    const supabase = createBrowserSupabase()
+    if (supabase) {
+      const { data: auth } = await supabase.auth.getUser()
+      if (auth.user) {
+        await supabase.from("users").update({ full_name: fullName.trim() || null }).eq("id", auth.user.id)
+        await supabase.auth.updateUser({ data: { full_name: fullName.trim() || null } })
+      }
+    }
     window.localStorage.setItem("baha-vehicle", vehicle)
     window.localStorage.setItem("baha-barangay", barangay)
     window.localStorage.setItem("baha-notifications", String(notifications))
@@ -46,7 +65,7 @@ export function ProfileScreen() {
       <div className="storm-grid min-h-[calc(100dvh-4rem)] p-4 lg:min-h-dvh lg:p-8">
         <div className="mx-auto max-w-3xl">
           <header className="flex items-center gap-4 rounded-3xl bg-[hsl(var(--navy))] p-6 text-[hsl(var(--background))] shadow-float dark:bg-cyan-950 dark:text-slate-100"><span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10"><UserRound className="h-8 w-8" /></span><div><p className="text-xs font-bold uppercase tracking-[0.17em] opacity-60">Community member</p><h1 className="mt-1 font-display text-3xl font-bold">Your safety settings</h1></div></header>
-          <section className="mt-5 rounded-3xl border bg-[hsl(var(--card))] p-5 shadow-soft sm:p-7"><h2 className="flex items-center gap-2 font-display text-xl font-bold"><SlidersHorizontal className="h-5 w-5 text-cyan-700" />Travel preferences</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="font-semibold">Default vehicle<select value={vehicle} onChange={(event) => setVehicle(event.target.value as VehicleType)} className="mt-2 min-h-12 w-full rounded-xl border bg-[hsl(var(--card))] px-3">{vehicleOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label><label className="font-semibold">Home barangay<div className="relative mt-2"><MapPin className="absolute left-3 top-3.5 h-5 w-5 text-[hsl(var(--muted-foreground))]" /><input value={barangay} onChange={(event) => setBarangay(event.target.value)} maxLength={120} className="min-h-12 w-full rounded-xl border bg-transparent pl-10 pr-3" /></div></label></div></section>
+          <section className="mt-5 rounded-3xl border bg-[hsl(var(--card))] p-5 shadow-soft sm:p-7"><h2 className="flex items-center gap-2 font-display text-xl font-bold"><SlidersHorizontal className="h-5 w-5 text-cyan-700" />Account & travel preferences</h2><label className="mt-5 block font-semibold">Full name<input value={fullName} onChange={(event) => setFullName(event.target.value)} maxLength={120} placeholder="Your full name" className="mt-2 min-h-12 w-full rounded-xl border bg-transparent px-4 outline-none focus:border-cyan-600" /></label><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="font-semibold">Default vehicle<select value={vehicle} onChange={(event) => setVehicle(event.target.value as VehicleType)} className="mt-2 min-h-12 w-full rounded-xl border bg-[hsl(var(--card))] px-3">{vehicleOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label><label className="font-semibold">Home barangay<div className="relative mt-2"><MapPin className="absolute left-3 top-3.5 h-5 w-5 text-[hsl(var(--muted-foreground))]" /><input value={barangay} onChange={(event) => setBarangay(event.target.value)} maxLength={120} className="min-h-12 w-full rounded-xl border bg-transparent pl-10 pr-3" /></div></label></div></section>
           <section className="mt-5 overflow-hidden rounded-3xl border bg-[hsl(var(--card))] shadow-soft"><SettingRow icon={Bell} title="Flood alerts" detail="Nearby verified reports" enabled={notifications} onChange={setNotifications} /><SettingRow icon={Database} title="Data saver" detail="Reduce refresh and map detail" enabled={dataSaver} onChange={setDataSaver} /><SettingRow icon={Moon} title="Dark mode" detail="Adjust for low-light travel" enabled={resolvedTheme === "dark"} onChange={(enabled) => setTheme(enabled ? "dark" : "light")} /></section>
           <section className="mt-5 rounded-3xl border bg-[hsl(var(--card))] p-5 shadow-soft"><Link href="/map" className="flex min-h-12 items-center gap-3 font-bold"><ShieldCheck className="h-5 w-5 text-cyan-700" />My report history<span className="ml-auto text-sm font-normal text-[hsl(var(--muted-foreground))]">No saved reports</span><ChevronRight className="h-4 w-4" /></Link></section>
           <div className="mt-5 grid gap-3 sm:grid-cols-2"><Button onClick={save}>{saved ? "Settings saved" : "Save settings"}</Button><Button variant="secondary" onClick={logout}><LogOut className="h-5 w-5" />Log out</Button></div>

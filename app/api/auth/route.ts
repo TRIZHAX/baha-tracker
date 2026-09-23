@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic"
 export async function POST(request: NextRequest) {
   const parsed = authSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return safeJsonError(parsed.error.issues[0]?.message || "Invalid account details", 400)
-  const { action, email, password, remember } = parsed.data
+  const { action, fullName, email, password, remember } = parsed.data
   if (["signup", "reset", "resend"].includes(action)) {
     const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
     const rate = await checkRateLimit("email", `${email.toLowerCase()}:${forwardedFor}`)
@@ -30,9 +30,13 @@ export async function POST(request: NextRequest) {
   }
   if (action === "signup") {
     const emailRedirectTo = new URL("/auth/callback", request.url).toString()
-    const { data, error } = await supabase.auth.signUp({ email, password: password as string, options: { emailRedirectTo } })
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: password as string,
+      options: { emailRedirectTo, data: { full_name: fullName } }
+    })
     if (error) return safeJsonError(error.message, 400)
-    if (data.user) await supabase.from("users").upsert({ id: data.user.id, email, role: "user" })
+    if (data.user) await supabase.from("users").upsert({ id: data.user.id, email, role: "user", full_name: fullName })
     return Response.json({ message: "Check your email to confirm your account" }, { status: 201 })
   }
   const { error } = await supabase.auth.signInWithPassword({ email, password: password as string })

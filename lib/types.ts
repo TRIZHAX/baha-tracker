@@ -42,6 +42,7 @@ export type MapFocus = {
 export type AdminReport = {
   id: string
   user_id: string | null
+  reporter_name: string | null
   reporter_email: string | null
   length_meters: number
   depth_level: DepthLevel
@@ -56,11 +57,16 @@ export type AdminReport = {
   verification_status: VerificationStatus
   upvotes: number
   downvotes: number
+  start_latitude: number
+  start_longitude: number
+  end_latitude: number
+  end_longitude: number
 }
 
 export type SosAdminAlert = {
   id: string
   user_id: string | null
+  reporter_name: string | null
   reporter_email: string | null
   latitude: number
   longitude: number

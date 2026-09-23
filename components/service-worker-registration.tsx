@@ -5,7 +5,9 @@ import { syncQueuedReports } from "@/lib/offline-queue"
 
 export function ServiceWorkerRegistration() {
   useEffect(() => {
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js")
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).then((registration) => registration.update()).catch(() => undefined)
+    }
     const sync = () => syncQueuedReports().catch(() => undefined)
     window.addEventListener("online", sync)
     sync()

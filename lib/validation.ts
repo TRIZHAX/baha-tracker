@@ -41,11 +41,15 @@ export const sosSchema = z.object({
 
 export const authSchema = z.object({
   action: z.enum(["login", "signup", "reset", "resend"]),
+  fullName: z.string().trim().min(2).max(120).optional(),
   email: z.string().email().max(254),
   password: z.string().min(8).max(128).optional(),
   remember: z.boolean().optional()
 }).superRefine((value, context) => {
   if (!["reset", "resend"].includes(value.action) && !value.password) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: "Password is required", path: ["password"] })
+  }
+  if (value.action === "signup" && !value.fullName) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Full name is required", path: ["fullName"] })
   }
 })

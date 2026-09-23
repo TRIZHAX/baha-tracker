@@ -11,27 +11,18 @@ export async function GET() {
   const admin = await getAdmin()
   if ("error" in admin) return admin.error
 
-  const { service } = admin
-  const { data, error } = await service
-    .from("reports")
-    .select("id,user_id,length_meters,depth_level,photo_url,note,street_name,barangay,report_mode,created_at,updated_at,expires_at,verification_status,upvotes,downvotes")
-    .order("created_at", { ascending: false })
-
+  const { service, user } = admin
+  const { data, error } = await service.rpc("get_admin_reports", { p_actor_id: user.id })
   if (error) return safeJsonError("Reports could not be loaded", 500)
-
-  const userIds = [...new Set((data ?? []).map((row) => row.user_id).filter((id): id is string => Boolean(id)))]
-  const usersById = new Map<string, { email: string | null }>()
-  if (userIds.length) {
-    const { data: users, error: usersError } = await service.from("users").select("id,email").in("id", userIds)
-    if (usersError) return safeJsonError("Reporter information could not be loaded", 500)
-    for (const user of users ?? []) usersById.set(user.id, { email: user.email })
-  }
 
   return NextResponse.json({
     reports: (data ?? []).map((row) => ({
       ...row,
-      reporter_email: row.user_id ? usersById.get(row.user_id)?.email ?? null : null,
-      length_meters: Number(row.length_meters)
+      length_meters: Number(row.length_meters),
+      start_latitude: Number(row.start_latitude),
+      start_longitude: Number(row.start_longitude),
+      end_latitude: Number(row.end_latitude),
+      end_longitude: Number(row.end_longitude)
     }))
   }, { headers: { "Cache-Control": "no-store" } })
 }

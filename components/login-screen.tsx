@@ -13,6 +13,7 @@ const EMAIL_COOLDOWN_KEY = "baha-auth-email-cooldown"
 export function LoginScreen() {
   const router = useRouter()
   const [mode, setMode] = useState<"login" | "signup">("login")
+  const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [remember, setRemember] = useState(true)
@@ -52,7 +53,7 @@ export function LoginScreen() {
     setSubmitting(true)
     setStatus("")
     setConfirmationSent(false)
-    const response = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: mode, email, password, remember }) })
+    const response = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: mode, fullName: mode === "signup" ? fullName : undefined, email, password, remember }) })
     const payload = await response.json() as { error?: string; message?: string }
     setSubmitting(false)
     if (!response.ok) {
@@ -65,7 +66,9 @@ export function LoginScreen() {
       setStatus(payload.message || "Check your email to confirm your account")
       return
     }
-    router.push("/map")
+    const requestedNext = new URL(window.location.href).searchParams.get("next")
+    const destination = requestedNext && requestedNext.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/map"
+    router.push(destination)
     router.refresh()
   }
 
@@ -127,6 +130,7 @@ export function LoginScreen() {
           <h2 className="mt-2 font-display text-4xl font-bold">{mode === "login" ? "Sign in" : "Create your account"}</h2>
           <p className="mt-3 text-[hsl(var(--muted-foreground))]">{mode === "login" ? "Vote on reports and save your vehicle settings." : "Join your neighbors in reporting current road conditions."}</p>
           <form onSubmit={authenticate} className="mt-8 space-y-4">
+            {mode === "signup" && <label className="block font-semibold">Full name<input type="text" autoComplete="name" required value={fullName} onChange={(event) => setFullName(event.target.value)} maxLength={120} placeholder="Your full name" className="mt-2 min-h-12 w-full rounded-xl border bg-[hsl(var(--card))] px-4 shadow-soft outline-none focus:border-cyan-600" /></label>}
             <label className="block font-semibold">Email address<div className="relative mt-2"><Mail className="absolute left-4 top-3.5 h-5 w-5 text-[hsl(var(--muted-foreground))]" /><input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" className="min-h-12 w-full rounded-xl border bg-[hsl(var(--card))] pl-12 pr-4 shadow-soft outline-none focus:border-cyan-600" /></div></label>
             <label className="block font-semibold">Password<div className="relative mt-2"><LockKeyhole className="absolute left-4 top-3.5 h-5 w-5 text-[hsl(var(--muted-foreground))]" /><input type={showPassword ? "text" : "password"} autoComplete={mode === "login" ? "current-password" : "new-password"} required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" className="min-h-12 w-full rounded-xl border bg-[hsl(var(--card))] pl-12 pr-12 shadow-soft outline-none focus:border-cyan-600" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute right-1 top-0 flex h-12 w-11 items-center justify-center">{showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button></div></label>
             {mode === "login" && <div className="flex items-center justify-between text-sm"><label className="flex min-h-11 items-center gap-2 font-semibold"><button type="button" role="checkbox" aria-checked={remember} onClick={() => setRemember((value) => !value)} className={`flex h-5 w-5 items-center justify-center rounded border ${remember ? "border-cyan-700 bg-cyan-700 text-white" : "bg-transparent"}`}>{remember && <Check className="h-3.5 w-3.5" />}</button>Remember me</label><button type="button" onClick={requestReset} disabled={submitting || cooldown > 0} className="min-h-11 font-bold text-cyan-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-cyan-300">{cooldown > 0 ? `Try again in ${cooldown}s` : "Forgot password?"}</button></div>}

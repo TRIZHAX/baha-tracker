@@ -1,5 +1,9 @@
 import { ReportScreen } from "@/components/report-screen"
+import { requireAuthenticatedUser } from "@/lib/auth"
 
-export default function ReportPage() {
+export const dynamic = "force-dynamic"
+
+export default async function ReportPage() {
+  await requireAuthenticatedUser()
   return <ReportScreen />
 }
